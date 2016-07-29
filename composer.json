@@ -1,0 +1,15 @@
+{
+    "name": "webmotor/composer-distribution-helper",
+    "type": "composer-plugin",
+    "require": {
+        "composer-plugin-api": "^1.0"
+    },
+    "autoload":{
+        "psr-4":{
+            "Wm\\ComposerDistributionHelper\\": "src/Wm/ComposerDistributionHelper"
+        }
+    },
+    "extra": {
+        "class": "Wm\\ComposerDistributionHelper\\Plugin"
+    }
+}
