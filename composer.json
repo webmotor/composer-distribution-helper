@@ -2,6 +2,7 @@
     "name": "webmotor/composer-distribution-helper",
     "type": "composer-plugin",
     "require": {
+        "php":"^5.5 || ^7.0",
         "composer-plugin-api": "^1.0"
     },
     "autoload":{

@@ -13,21 +13,30 @@ use Composer\Plugin\PluginInterface;
  */
 class Plugin implements PluginInterface, \Composer\Plugin\Capable
 {
-
-    protected $io;
-    protected $composer;
+    /**
+     *
+     * @var Composer\Composer
+     */
+    static $composer;
+    
+    /**
+     *
+     * @var Composer\IO\IOInterface
+     */
+    static $io;
 
     public function activate(Composer $composer, IOInterface $io)
     {
-        $this->io       = $io;
-        $this->composer = $composer;
+        self::$io       = $io;
+        self::$composer = $composer;
     }
 
     public function getCapabilities()
     {
         return [ 
-            'Composer\Plugin\Capability\CommandProvider' => 'My\Composer\CommandProvider',
+            'Composer\Plugin\Capability\CommandProvider' => CommandProvider::class,
         ];
     }
+
 
 }
