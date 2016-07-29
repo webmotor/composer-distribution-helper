@@ -13,17 +13,18 @@ use Composer\Plugin\PluginInterface;
  */
 class Plugin implements PluginInterface, \Composer\Plugin\Capable
 {
+
     /**
      *
-     * @var Composer\Composer
+     * @var \Composer\Composer
      */
-    static $composer;
-    
+    static protected $composer;
+
     /**
      *
-     * @var Composer\IO\IOInterface
+     * @var \Composer\IO\IOInterface
      */
-    static $io;
+    static protected $io;
 
     public function activate(Composer $composer, IOInterface $io)
     {
@@ -31,12 +32,37 @@ class Plugin implements PluginInterface, \Composer\Plugin\Capable
         self::$composer = $composer;
     }
 
+    /**
+     * 
+     * @return \Composer\Composer
+     * @throws \Exception
+     */
+    public static function getComposer()
+    {
+        if (self::$composer === null) {
+            throw new \Exception('Can\'t access composer instance');
+        }
+        return self::$composer;
+    }
+
+    /**
+     * 
+     * @return \Composer\IO\IOInterface
+     * @throws \Exception
+     */
+    public static function getIo()
+    {
+        if (self::$io === null) {
+            throw new \Exception('Can\'t access io instance');
+        }
+        return self::$io;
+    }
+
     public function getCapabilities()
     {
-        return [ 
+        return [
             'Composer\Plugin\Capability\CommandProvider' => CommandProvider::class,
         ];
     }
-
 
 }
