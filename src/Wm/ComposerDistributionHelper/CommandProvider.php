@@ -16,6 +16,7 @@ class CommandProvider implements CommandProviderCapability
     {
         return [
             new Command\CleanVcs(),
+            new Command\CleanVcsPasswords(),
         ];
     }
 
