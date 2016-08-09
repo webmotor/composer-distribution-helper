@@ -59,6 +59,7 @@ class CleanVcsPasswords extends \Composer\Command\BaseCommand
                 echo (sprintf('Cleaning passwords in "%s"', $path)) . PHP_EOL;
                 $this->cleanGitConfig($path);
             }
+            $this->cleanCache($composer);
         }
     }
 
@@ -115,6 +116,95 @@ class CleanVcsPasswords extends \Composer\Command\BaseCommand
             $gitConfigContentCleanedArray[] = $this->findAuthDataAndClean($lineContent);
         }
         file_put_contents($path, implode($this->lineDelimiter, $gitConfigContentCleanedArray));
+    }
+
+    /**
+     * Clean catalog recursively
+     * @param string $path
+     */
+    protected function cleanCatalog($path)
+    {
+        if (is_dir($path)) {
+            foreach (glob($path . DIRECTORY_SEPARATOR . '*') as $subPath) {
+                $this->cleanCatalog($subPath);
+            }
+            if (!rmdir($path)) {
+                echo sprintf('Can not remove catalog: "%s"', $path) . PHP_EOL;
+            }
+        } else {
+            if (!unlink($path)) {
+                echo sprintf('Can not delete file "%s"', $path) . PHP_EOL;
+            }
+        }
+    }
+
+    /**
+     * @param string $url
+     * @return boolean
+     */
+    protected function isUrlIncludePassword(&$url)
+    {
+        if (!($parsedUrl = parse_url($url))) {
+            return false;
+        }
+        if (isset($parsedUrl['user']) || isset($parsedUrl['pass'])) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param string $url
+     * @return string
+     */
+    protected function urlToPath($url)
+    {
+        return str_replace([':', '/', '@'], '-', $url);
+    }
+
+    /**
+     * Clean cache catalogs
+     * @param \Composer\Composer $composer
+     */
+    protected function cleanCache(\Composer\Composer $composer)
+    {
+        echo 'Cleaning passwords in cache' . PHP_EOL;
+        $repositories = $composer->getRepositoryManager()->getRepositories();
+        if (!count($repositories)) {
+            return;
+        }
+        $composerConfig = $composer->getConfig();
+        $packagesUrls = [];
+        foreach ($repositories as &$repository) { // getting urls
+            $repositoryConfig = $repository->getRepoconfig();
+            if (isset($repositoryConfig['url'])) {
+                $packagesUrls[$repositoryConfig['url']] = $this->urlToPath($repositoryConfig['url']);
+            }
+            if (count($repository->getProviderNames()) !== 0) {
+                continue;
+            }
+            foreach ($repository->getPackages() as $package) {
+                $sourceUrl = $package->getSourceUrl();
+                $packagesUrls[$sourceUrl] = $this->urlToPath($sourceUrl);
+            }
+        }
+        $packagesUrlsFlipped = array_flip($packagesUrls);
+
+        foreach ([$composerConfig->get('cache-vcs-dir'), $composerConfig->get('cache-repo-dir')] as $catalog) {
+            foreach (glob($catalog . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) as $subcatalog) {
+                if ($this->isUrlIncludePassword($packagesUrlsFlipped[basename($subcatalog)])) {
+                    echo sprintf('Deleting unnecessary catalog "%s"', $subcatalog) . PHP_EOL;
+                    $this->cleanCatalog($subcatalog);
+                    continue;
+                }
+                $configFile = $subcatalog . DIRECTORY_SEPARATOR . 'config';
+                if (!file_exists($configFile)) {
+                    continue;
+                }
+                echo sprintf('Cleaning passwords in "%s"', $configFile) . PHP_EOL;
+                $this->cleanGitConfig($configFile);
+            }
+        }
     }
 
 }
