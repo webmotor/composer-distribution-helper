@@ -180,7 +180,7 @@ class CleanVcsPasswords extends \Composer\Command\BaseCommand
             if (isset($repositoryConfig['url'])) {
                 $packagesUrls[$repositoryConfig['url']] = $this->urlToPath($repositoryConfig['url']);
             }
-            if (count($repository->getProviderNames()) !== 0) {
+            if (! $repository->count()) {
                 continue;
             }
             foreach ($repository->getPackages() as $package) {
