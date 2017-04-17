@@ -1,5 +1,4 @@
 <?php
-
 namespace Wm\ComposerDistributionHelper\Cleaner;
 
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,6 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class VcsPasswords
 {
+
     const LINE_DELIMITER = PHP_EOL;
 
     /**
@@ -35,7 +35,6 @@ class VcsPasswords
 
     public function clean()
     {
-
         $composer = $this->composer;
 
         // init repos
@@ -48,6 +47,7 @@ class VcsPasswords
         $localRepo     = $composer->getRepositoryManager()->getLocalRepository();
         $installedRepo = new \Composer\Repository\CompositeRepository(array($localRepo, $platformRepo));
 
+        $this->io->write('<info>composer-distribution-helper:</info> cleaning git credentials...');
         $paths = [];
         foreach ($composer->getRepositoryManager()->getLocalRepository()->getPackages() as $package) {
             try {
@@ -59,17 +59,25 @@ class VcsPasswords
                             continue;
                         }
                         $paths[] = $path;
-                        $this->io->write(sprintf('%s', $path), true);
                     }
                 }
             } catch (\Exception $ex) {
                 var_dump($ex->getMessage());
             }
         }
-
+        
+        if ($this->io->isVerbose()) {
+            $this->io->write('<info>composer-distribution-helper:</info> clean passwords from: ');
+        }
         foreach ($paths as $path) {
-            echo (sprintf('Cleaning passwords in "%s"', $path)) . PHP_EOL;
+            if ($this->io->isVerbose()) {
+                $this->io->write(sprintf(' - "vendor%s"', \mb_substr($path, \mb_strlen(\realpath($this->composer->getConfig()->get('vendor-dir'))) )) ) . PHP_EOL;
+            }
             $this->cleanGitConfig($path);
+            
+            if(\is_dir($logsDir = dirname($path).'/logs')){
+                $this->cleanCatalog($logsDir);
+            }
         }
         $this->cleanCache($composer);
     }
@@ -116,7 +124,7 @@ class VcsPasswords
             return;
         }
         if (!is_writable($path)) {
-            echo sprintf('File "%s" is NOT writable') . PHP_EOL;
+            $this->io->writeError(sprintf('File "%s" is NOT writable'));
             return;
         }
         $gitConfigContent             = file_get_contents($path);
@@ -138,11 +146,11 @@ class VcsPasswords
                 $this->cleanCatalog($subPath);
             }
             if (!rmdir($path)) {
-                echo sprintf('Can not remove catalog: "%s"', $path) . PHP_EOL;
+                $this->io->writeError(sprintf('Can not remove catalog: "%s"', $path));
             }
         } else {
             if (!unlink($path)) {
-                echo sprintf('Can not delete file "%s"', $path) . PHP_EOL;
+                $this->io->writeError( sprintf('Can not delete file "%s"', $path) );
             }
         }
     }
@@ -177,7 +185,7 @@ class VcsPasswords
      */
     protected function cleanCache(\Composer\Composer $composer)
     {
-        echo 'Cleaning passwords in cache' . PHP_EOL;
+        $this->io->write('<info>composer-distribution-helper:</info> cleaning passwords in cache...');
         $repositories = $composer->getRepositoryManager()->getRepositories();
         if (!count($repositories)) {
             return;
@@ -199,10 +207,16 @@ class VcsPasswords
         }
         $packagesUrlsFlipped = array_flip($packagesUrls);
 
+        if ($this->io->isVerbose()) {
+            $this->io->write('<info>composer-distribution-helper:</info> clean passwords from cache folder: ');
+        }
+
         foreach ([$composerConfig->get('cache-vcs-dir'), $composerConfig->get('cache-repo-dir')] as $catalog) {
             foreach (glob($catalog . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) as $subcatalog) {
                 if ($this->isUrlIncludePassword($packagesUrlsFlipped[basename($subcatalog)])) {
-                    echo sprintf('Deleting unnecessary catalog "%s"', $subcatalog) . PHP_EOL;
+                    if ($this->io->isVerbose()) {
+                        $this->io->write( sprintf('<info>composer-distribution-helper:</info>  deleting unnecessary catalog "%s"', $subcatalog) );
+                    }
                     $this->cleanCatalog($subcatalog);
                     continue;
                 }
@@ -210,8 +224,14 @@ class VcsPasswords
                 if (!file_exists($configFile)) {
                     continue;
                 }
-                echo sprintf('Cleaning passwords in "%s"', $configFile) . PHP_EOL;
+                if ($this->io->isVerbose()) {
+                    $this->io->write( sprintf(' - "%s"', $configFile) );
+                }
                 $this->cleanGitConfig($configFile);
+                
+                if(\is_dir($logsDir = $catalog.'/logs')){
+                    $this->cleanCatalog($logsDir);
+                }
             }
         }
     }
