@@ -11,7 +11,7 @@ use Composer\Plugin\PluginInterface;
  *
  * @author oprokidnev
  */
-class Plugin implements PluginInterface, \Composer\Plugin\Capable
+class Plugin implements PluginInterface, \Composer\Plugin\Capable, \Composer\EventDispatcher\EventSubscriberInterface
 {
 
     /**
@@ -65,4 +65,16 @@ class Plugin implements PluginInterface, \Composer\Plugin\Capable
         ];
     }
 
+    public static function getSubscribedEvents()
+    {
+        return array(
+            'post-install-cmd' => 'triggerPostInstall',
+        );
+    }
+    
+    public function triggerPostInstall(\Composer\Script\Event $scriptEvent){
+        $listener = new Listener\CleanVcsAfterInstall(self::$composer, self::$io);        
+        $listener->trigger($scriptEvent);
+    }
+    
 }
